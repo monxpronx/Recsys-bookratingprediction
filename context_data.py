@@ -206,7 +206,7 @@ def process_context_data(users, books):
     # -------------------------
     # USERS 전처리
     # -------------------------
-    users_['age'] = users_['age'].fillna(users_['age'].mode()[0])
+    users_['age'] = users_['age'].fillna(-1)
     
     # --- 도메인 기반 Age Binning ---
     bins = [0, 12, 17, 24, 34, 44, 54, 150]
@@ -222,6 +222,11 @@ def process_context_data(users, books):
         labels=labels,
         right=True
     )
+    
+    # 3) 음수(-1) 또는 binning 불가(NA)는 unknown 처리
+    users_['age_group'] = users_['age_group'].astype(str)
+    users_.loc[users_['age'] < 0, 'age_group'] = 'unknown'
+    users_['age_group'] = users_['age_group'].fillna('unknown')
     
     # 기존 age_range 삭제 (사용 안 함)
     # users_['age_range'] = users_['age'].apply(lambda x: x // 10 * 10)  # 10대, 20대, 30대, ...
@@ -303,7 +308,9 @@ def context_data_load(args):
     train_df = train.merge(users_, on='user_id', how='left')\
                     .merge(books_, on='isbn', how='left')[sparse_cols + ['rating']]
     test_df = test.merge(users_, on='user_id', how='left')\
-                  .merge(books_, on='isbn', how='left')[sparse_cols]
+                  .merge(books_, on='isbn', how='left')
+                  
+    test_df = test_df.loc[test.index, sparse_cols]              
     all_df = pd.concat([train_df, test_df], axis=0)
 
     # feature_cols의 데이터만 라벨 인코딩하고 인덱스 정보를 저장
