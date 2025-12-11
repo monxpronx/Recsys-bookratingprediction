@@ -67,7 +67,7 @@ def process_context_data(users, books):
     books_ = books.copy()
 
     # 데이터 전처리 (전처리는 각자의 상황에 맞게 진행해주세요!)
-    books_['category'] = books_['category'].apply(lambda x: str2list(x)[0] if not pd.isna(x) else np.nan)
+    #books_['category'] = books_['category'].apply(lambda x: str2list(x)[0] if not pd.isna(x) else np.nan)
     books_['language'] = books_['language'].fillna(books_['language'].mode()[0])
     books_['publication_range'] = books_['year_of_publication'].apply(lambda x: x // 10 * 10)  # 1990년대, 2000년대, 2010년대, ...
 
@@ -103,6 +103,30 @@ def process_context_data(users, books):
 
     return users_, books_
 
+def image_vector(path, img_size):
+    """
+    Parameters
+    ----------
+    path : str
+        이미지가 존재하는 경로를 입력합니다.
+
+    Returns
+    -------
+    img_fe : np.ndarray
+        이미지를 벡터화한 결과를 반환합니다.
+        베이스라인에서는 grayscale일 경우 RGB로 변경한 뒤, img_size x img_size 로 사이즈를 맞추어 numpy로 반환합니다.
+    """
+    img = Image.open(path)
+    transform = v2.Compose([
+        v2.Lambda(lambda x: x.convert('RGB') if x.mode != 'RGB' else x),
+        v2.Resize((img_size, img_size)),
+        v2.ToImage(),
+        v2.ToDtype(torch.float32, scale=True),
+        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+
+    return transform(img).numpy()
+
 class Image_Dataset(Dataset):
     def __init__(self, user_book_vector, img_vector, rating=None):
         """
@@ -130,32 +154,6 @@ class Image_Dataset(Dataset):
                 'user_book_vector' : torch.tensor(self.user_book_vector[i], dtype=torch.long),
                 'img_vector' : torch.tensor(self.img_vector[i], dtype=torch.float32)
                 }
-
-
-def image_vector(path, img_size):
-    """
-    Parameters
-    ----------
-    path : str
-        이미지가 존재하는 경로를 입력합니다.
-
-    Returns
-    -------
-    img_fe : np.ndarray
-        이미지를 벡터화한 결과를 반환합니다.
-        베이스라인에서는 grayscale일 경우 RGB로 변경한 뒤, img_size x img_size 로 사이즈를 맞추어 numpy로 반환합니다.
-    """
-    img = Image.open(path)
-    transform = v2.Compose([
-        v2.Lambda(lambda x: x.convert('RGB') if x.mode != 'RGB' else x),
-        v2.Resize((img_size, img_size)),
-        v2.ToImage(),
-        v2.ToDtype(torch.float32, scale=True),
-        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
-    return transform(img).numpy()
-
 
 def process_img_data(books, args):
     """
@@ -196,7 +194,7 @@ def image_data_load(args):
         학습 및 테스트 데이터가 담긴 사전 형식의 데이터를 반환합니다.
     """
     users = pd.read_csv(args.dataset.data_path + 'users.csv')  # 베이스라인 코드에서는 사실상 사용되지 않음
-    books = pd.read_csv(args.dataset.data_path + 'books_medium.csv') # books.csv
+    books = pd.read_csv(args.dataset.data_path + 'books_v4.csv') # books.csv
     train = pd.read_csv(args.dataset.data_path + 'train_ratings.csv')
     test = pd.read_csv(args.dataset.data_path + 'test_ratings.csv')
     sub = pd.read_csv(args.dataset.data_path + 'sample_submission.csv')
@@ -223,6 +221,8 @@ def image_data_load(args):
     label2idx, idx2label = {}, {}
     for col in sparse_cols:
         all_df[col] = all_df[col].fillna('unknown')
+
+        # 2) 라벨 인코딩 진행
         unique_labels = all_df[col].astype("category").cat.categories
         label2idx[col] = {label:idx for idx, label in enumerate(unique_labels)}
         idx2label[col] = {idx:label for idx, label in enumerate(unique_labels)}
