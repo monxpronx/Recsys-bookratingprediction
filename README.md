@@ -21,7 +21,7 @@
 
 ## Dataset
 본 데이터는 대회에서 제공된 공개 데이터셋을 사용하였습니다.
-- 사용자-책 평점 데이터 ('train_ratings.csv')
-- 사용자 메타데이터 ('users.csv')
-- 책 메타데이터 ('books.csv')
+- 사용자-책 평점 데이터 (`train_ratings.csv`)
+- 사용자 메타데이터 (`users.csv`)
+- 책 메타데이터 (`books.csv`)
 - 책 표지 이미지 데이터
